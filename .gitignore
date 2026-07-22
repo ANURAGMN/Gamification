@@ -1,0 +1,39 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# Node (Capacitor)
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.apk
+*.aab
+*.dex
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+*.kotlin_module
+
+# Secrets
+.env
+.env.*
+*.keystore
+google-services.json
+
+# Cursor / agent tooling
+.cursor/
+agent-tools/
+agent-transcripts/

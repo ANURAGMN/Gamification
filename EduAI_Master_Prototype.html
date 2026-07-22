@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduAI — Master Prototype</title>
+<style>
+:root{
+  --accent:#3B6FD6; --accent-bg:#EAF0FC;
+  --success:#2F9E5B; --success-bg:#E7F6ED;
+  --warning:#D98A2B; --warning-bg:#FBF0DF;
+  --danger:#E1504F; --danger-bg:#FCEAEA;
+  --pro:#7C5CE0; --pro-bg:#EFEAFC;
+  --surface1:#F4F5F7; --surface2:#FFFFFF;
+  --border:#E4E7EC; --border-strong:#CDD2DB;
+  --text:#1A1D24; --text-sec:#5B6270; --text-muted:#9AA1AC;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:#E3E6EB; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  display:flex; justify-content:center; align-items:flex-start; padding:28px 12px; min-height:100vh;
+}
+.device{width:380px; background:#111318; border-radius:42px; padding:12px; box-shadow:0 24px 48px rgba(20,24,34,0.28);}
+.screen{background:var(--surface1); border-radius:32px; height:770px; display:flex; flex-direction:column; position:relative; overflow:hidden;}
+.statusbar{height:20px;}
+.content{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+.content-pad{padding:14px 16px 24px;}
+.bottomnav{display:flex; justify-content:space-around; align-items:center; padding:10px 0 16px; background:var(--surface2); border-top:0.5px solid var(--border); flex-shrink:0;}
+.navitem{display:flex; flex-direction:column; align-items:center; gap:2px; position:relative; cursor:pointer; padding:4px 10px;}
+.navdot{position:absolute; top:-1px; right:4px; width:8px; height:8px; border-radius:50%; background:var(--danger); border:1.5px solid var(--surface2);}
+button{font-family:inherit; cursor:pointer;}
+.btn-primary{background:var(--accent); color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:500; padding:11px;}
+.btn-secondary{background:var(--surface2); color:var(--text-sec); border:1px solid var(--border-strong); border-radius:10px; font-size:13px; padding:10px;}
+.btn-ghost{background:transparent; border:none; color:var(--text-sec); font-size:13px; padding:6px;}
+.card{background:var(--surface2); border-radius:14px; padding:12px 14px;}
+.chip{display:inline-flex; align-items:center; gap:4px; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:500;}
+.rail{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none;}
+.rail::-webkit-scrollbar{display:none;}
+.section-title{font-size:14px; font-weight:600; margin:0 0 10px; color:var(--text);}
+.section-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.see-all{font-size:11px; color:var(--accent); font-weight:500; cursor:pointer;}
+.topbar{display:flex; justify-content:space-between; align-items:center; padding:14px 16px 4px;}
+.overlay{position:absolute; inset:0; background:rgba(10,12,18,0.42); display:flex; align-items:flex-end; z-index:30;}
+.sheet{width:100%; background:var(--surface2); border-radius:20px 20px 0 0; padding:18px 16px 22px; animation:slideup .18s ease-out;}
+@keyframes slideup{from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+.toast{position:absolute; bottom:90px; left:16px; right:16px; background:#1A1D24; color:#fff; padding:11px 14px; border-radius:12px; font-size:12.5px; text-align:center; z-index:50; opacity:0; transition:opacity .25s, transform .25s; transform:translateY(8px); pointer-events:none;}
+.toast.show{opacity:1; transform:translateY(0);}
+.progress{height:6px; background:var(--border); border-radius:3px; overflow:hidden;}
+.progress > div{height:100%; background:var(--accent);}
+.subtab{display:flex; gap:6px; background:var(--surface1); border-radius:10px; padding:3px; margin-bottom:14px;}
+.subtab span{flex:1; text-align:center; font-size:12px; font-weight:500; padding:7px 0; border-radius:8px; cursor:pointer; color:var(--text-sec);}
+.subtab span.active{background:var(--surface2); color:var(--accent); box-shadow:0 1px 2px rgba(0,0,0,0.06);}
+::-webkit-scrollbar{width:0;height:0;}
+a{color:inherit; text-decoration:none;}
+.header-row{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+@keyframes popin{0%{transform:scale(0.3);opacity:0;} 55%{transform:scale(1.18);opacity:1;} 100%{transform:scale(1);}}
+@keyframes confettiFall{0%{transform:translateY(-16px) rotate(0deg);opacity:1;} 100%{transform:translateY(150px) rotate(420deg);opacity:0;}}
+.celebrate-icon{animation:popin .5s cubic-bezier(.34,1.56,.64,1);}
+.confetti-piece{position:absolute; top:0; width:7px; height:7px; border-radius:2px; animation:confettiFall 1.15s ease-in forwards;}
+.countup{font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="screen" id="screen">
+    <div class="statusbar"></div>
+    <div class="content" id="content"></div>
+    <div id="bottomnav"></div>
+    <div id="overlay-root"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- ICONS (self-contained inline SVG) ---------------- */
+function ic(name, size, color){
+  size = size || 18; color = color || 'currentColor';
+  const p = {
+    home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+    clipboard:'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 10h6M9 14h6"/>',
+    target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="'+color+'"/>',
+    shield:'<path d="M12 3l7 3v6c0 5-3 7.5-7 9-4-1.5-7-4-7-9V6l7-3z"/>',
+    user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+    flame:'<path d="M12 2c1 4-4 5-4 9a4 4 0 008 0c0-2-1-3-1-3s2 1 2 5a6 6 0 01-12 0C5 8 9 7 12 2z"/>',
+    diamond:'<path d="M4 9l4-6h8l4 6-10 12z"/><path d="M4 9h16M9 3l3 6-3 12M15 3l-3 6 3 12"/>',
+    star:'<path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6z"/>',
+    starfilled:'<path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6z" fill="'+color+'"/>',
+    lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+    play:'<path d="M6 4l14 8-14 8z" fill="'+color+'"/>',
+    gift:'<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 9h16v4H4z" opacity="0.5"/><path d="M12 9v11M8 9c-2 0-3-1.2-3-2.5S6 4 8 4c2 0 4 3 4 5M16 9c2 0 3-1.2 3-2.5S18 4 16 4c-2 0-4 3-4 5"/>',
+    check:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/>',
+    refresh:'<path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3"/><path d="M18 4v4h-4M6 20v-4h4"/>',
+    chevleft:'<path d="M15 5l-7 7 7 7"/>',
+    chevright:'<path d="M9 5l7 7-7 7"/>',
+    mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/>',
+    sparkle:'<path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    award:'<circle cx="12" cy="9" r="6"/><path d="M8 14l-2 7 6-3 6 3-2-7"/>',
+    trophy:'<path d="M7 4h10v5a5 5 0 01-10 0V4z"/><path d="M7 5H4v2a3 3 0 003 3M17 5h3v2a3 3 0 01-3 3"/><path d="M12 14v3M9 21h6M9 18h6v3H9z"/>',
+    book:'<path d="M4 5c2-1 5-1 8 0v14c-3-1-6-1-8 0z"/><path d="M20 5c-2-1-5-1-8 0v14c3-1 6-1 8 0z"/>',
+    flag:'<path d="M6 3v18"/><path d="M6 4h12l-3 4 3 4H6z"/>',
+    video:'<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/>',
+    copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><rect x="4" y="4" width="11" height="11" rx="2"/>',
+    qr:'<rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="2.5" height="2.5"/><rect x="17.5" y="14" width="2.5" height="2.5"/><rect x="14" y="17.5" width="2.5" height="2.5"/><rect x="17.5" y="17.5" width="2.5" height="2.5"/>',
+    close:'<path d="M6 6l12 12M18 6L6 18"/>',
+    fraction:'<path d="M6 18L18 6"/><circle cx="8" cy="8" r="2"/><circle cx="16" cy="16" r="2"/>',
+    decimal:'<circle cx="6" cy="18" r="1.6" fill="'+color+'"/><path d="M10 18h10"/><path d="M4 8h6M4 12h4"/>',
+    gamepad:'<rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 11v4M6 13h4"/><circle cx="16" cy="12" r="1" fill="'+color+'"/><circle cx="18" cy="14" r="1" fill="'+color+'"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    bookmark:'<path d="M7 3h10v18l-5-3.5L7 21z"/>',
+    bookmarkfilled:'<path d="M7 3h10v18l-5-3.5L7 21z" fill="'+color+'"/>',
+    arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>'
+  }[name] || '';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
+}
+
+/* ---------------- STATE ---------------- */
+const state = {
+  screen:'home', history:[], leagueTab:'board', modal:null,
+  gems:240, streak:6, leagueRank:4, leagueName:'Silver',
+  quests:{sims:{done:2,total:3,reward:20,claimed:false}, quiz:{done:0,total:1,reward:15,claimed:false}, bonus:{claimed:false,reward:30}},
+  plan:[
+    {day:1,status:'done',label:'Properties of integers'},
+    {day:2,status:'done',label:'Adding integers'},
+    {day:3,status:'done',label:'Word problems on integers'},
+    {day:4,status:'today',label:'Multiplication & division of integers',minutes:18,subject:'Integers'},
+    {day:5,status:'upcoming',label:'Multiplication of fractions',minutes:35,subject:'Fractions & Decimals',prereqOk:true},
+    {day:6,status:'upcoming',label:'Operations on decimals',minutes:30,subject:'Fractions & Decimals',prereqOk:true},
+    {day:7,status:'upcoming',label:'Revision',type:'revise'},
+    {day:8,status:'upcoming',label:'Revision',type:'revise'},
+    {day:9,status:'upcoming',label:'Mock test',type:'mock'},
+    {day:10,status:'upcoming',label:'Exam day',type:'exam'}
+  ],
+  revisionQueue:[{topic:'Division of fractions',score:45},{topic:'Integer word problems',score:58}],
+  friends:[
+    {name:'Rehan',event:'Reached a 30 day streak',icon:'flame',color:'accent',seen:false,cheers:4,cheered:false},
+    {name:'Meher',event:'Earned the Integer Master badge',icon:'award',color:'success',seen:false,cheers:2,cheered:false},
+    {name:'You',event:'Promoted to the Silver League',icon:'trophy',color:'pro',seen:true,cheers:7,cheered:true}
+  ],
+  topicProgress:{}, // key: topic label -> {concept:bool, sim:bool}
+  currentTopic:null,
+  quizPending:null, // topic label being quizzed
+  planCreated:true,
+  planSetup:{examType:'Unit Test',subject:'Math',chapters:{'Integers':true,'Fractions & Decimals':true,'Simple Equations':false},days:10,minutes:40},
+  redeemStatus:null,
+  repairsUsed:1,
+  gemsHeld:0,
+  xp:340,
+  conceptsCompleted:18,
+  bookmarks:[
+    {key:'Division of fractions', type:'revision'},
+    {key:'Properties of integers', type:'concept'},
+    {key:'Multiplication of fractions', type:'simulation'}
+  ]
+};
+function isBookmarked(key,type){ return state.bookmarks.some(b=>b.key===key && b.type===type); }
+function toggleBookmark(key,type){
+  const i = state.bookmarks.findIndex(b=>b.key===key && b.type===type);
+  if(i>-1){ state.bookmarks.splice(i,1); toast('Removed from bookmarks'); }
+  else { state.bookmarks.unshift({key,type}); toast('Saved to bookmarks'); }
+  render();
+}
+const bookmarkTypeMeta = {
+  concept:{icon:'sparkle', color:'accent', label:'Concept'},
+  simulation:{icon:'gamepad', color:'pro', label:'Simulation'},
+  revision:{icon:'refresh', color:'warning', label:'Revision'}
+};
+
+/* ---------------- NAV HELPERS ---------------- */
+function tab(name){ state.history=[]; state.modal=null; state.screen=name; render(); }
+function nav(name){ state.history.push(state.screen); state.modal=null; state.screen=name; render(); window.scrollTo(0,0); document.getElementById('content').scrollTop=0; }
+function back(){ state.modal=null; state.screen = state.history.pop() || 'home'; render(); }
+function openModal(name){ state.modal=name; render(); }
+function closeModal(){ state.modal=null; render(); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+/* ---------------- SHARED BITS ---------------- */
+function topBarChips(){
+  return `
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="header-row" style="margin-bottom:0;cursor:pointer" onclick="tab('profile')">
+      <div style="position:relative;width:34px;height:34px;flex-shrink:0;">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);"></div>
+        ${state.notifFriend? '<div style="position:absolute;top:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--danger);border:2px solid var(--surface1);"></div>':''}
+      </div>
+      <div>
+        <p style="font-size:12px;color:var(--text-sec);margin:0;">Good morning</p>
+        <p style="font-size:15px;font-weight:600;margin:1px 0 0;">Aanya</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="chip" style="background:var(--warning-bg);color:var(--warning);cursor:pointer" onclick="nav('streak')">
+        ${ic('flame',13,'var(--warning)')}<span>${state.streak}</span>
+      </div>
+      <div class="chip" style="background:var(--pro-bg);color:var(--pro);position:relative;cursor:pointer" onclick="nav('rewards')">
+        ${ic('diamond',13,'var(--pro)')}<span>${state.gems}</span>
+        <div style="position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--surface1);"></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin:8px 0 14px;">
+    <div class="chip" style="background:var(--surface2);color:var(--text-sec);position:relative;cursor:pointer" onclick="tab('leagues')">
+      ${ic('shield',12,'var(--text-sec)')}<span>${state.leagueName} &middot; Rank ${state.leagueRank}</span>
+      <div style="position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--surface1);"></div>
+    </div>
+  </div>`;
+}
+function backHeader(title){
+  return `<div class="header-row"><span onclick="back()" style="cursor:pointer;display:flex">${ic('chevleft',20,'var(--text-sec)')}</span><p style="font-size:16px;font-weight:600;margin:0;">${title}</p></div>`;
+}
+function questTrailHTML(){
+  const q=state.quests;
+  return `
+  <div class="section-head"><p class="section-title" style="margin:0">Today's quests</p><span class="see-all" onclick="nav('quests')">See all</span></div>
+  <div style="position:relative;height:112px;margin-bottom:18px;">
+    <svg viewBox="0 0 340 112" width="100%" height="112" style="position:absolute;top:0;left:0;">
+      <path d="M50 52 Q110 18 170 52 Q230 86 290 52" fill="none" stroke="var(--border-strong)" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <div style="position:absolute;left:50px;top:52px;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:50%;background:conic-gradient(var(--accent) 0% ${Math.round(100*q.sims.done/q.sims.total)}%, var(--border) ${Math.round(100*q.sims.done/q.sims.total)}% 100%);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="${q.sims.done>=q.sims.total ? (q.sims.claimed?"toast('Already claimed')":"openClaimModal('sims')") : 'doSimQuest()'}">
+      ${(q.sims.done>=q.sims.total && !q.sims.claimed) ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--pro);border:2px solid var(--surface2);display:flex;align-items:center;justify-content:center;">${ic('video',9,'#fff')}</div>` : ''}
+      <div style="width:41px;height:41px;border-radius:50%;background:var(--surface1);display:flex;align-items:center;justify-content:center;">${ic('gamepad',17,'var(--accent)')}</div>
+    </div>
+    <p style="position:absolute;left:50px;top:83px;transform:translateX(-50%);font-size:9px;color:var(--text-muted);width:80px;text-align:center;">3 sims &middot; ${q.sims.done}/${q.sims.total}</p>
+
+    <div style="position:absolute;left:170px;top:18px;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:${q.quiz.done>=q.quiz.total?'var(--success)':'var(--surface2)'};border:2px solid ${q.quiz.done>=q.quiz.total?'var(--success)':'var(--border-strong)'};display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="${q.quiz.done>=q.quiz.total ? (q.quiz.claimed?"toast('Already claimed')":"openClaimModal('quiz')") : "nav('quiz')"}">
+      ${(q.quiz.done>=q.quiz.total && !q.quiz.claimed) ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--pro);border:2px solid var(--surface2);display:flex;align-items:center;justify-content:center;">${ic('video',9,'#fff')}</div>` : ''}
+      ${q.quiz.done>=q.quiz.total? ic('starfilled',17,'#fff') : ic('check',17,'var(--text-sec)')}
+    </div>
+    <p style="position:absolute;left:170px;top:47px;transform:translateX(-50%);font-size:9px;color:var(--text-muted);width:80px;text-align:center;">Quiz 80%+ &middot; ${q.quiz.done}/${q.quiz.total}</p>
+
+    <div style="position:absolute;left:290px;top:52px;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:12px;background:${q.bonus.claimed?'var(--success-bg)':'var(--warning-bg)'};display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="claimBonus()">
+      ${q.bonus.claimed? ic('check',19,'var(--success)') : ic('video',19,'var(--warning)')}
+    </div>
+    <p style="position:absolute;left:290px;top:79px;transform:translateX(-50%);font-size:9px;color:${q.bonus.claimed?'var(--success)':'var(--warning)'};width:70px;text-align:center;">${q.bonus.claimed?'Claimed':'Bonus &middot; +30'}</p>
+  </div>`;
+}
+function friendsRailHTML(){
+  return `
+  <div class="section-head"><p class="section-title" style="margin:0">Friends' updates</p><span class="see-all" onclick="state.leagueTab='feed';tab('leagues')">See all</span></div>
+  <div class="rail" style="margin-bottom:18px;">
+    ${state.friends.map((f,i)=>`
+    <div class="card" style="min-width:130px;cursor:pointer" onclick="cheer(${i})">
+      <div style="position:relative;width:28px;height:28px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--${f.color}-bg);display:flex;align-items:center;justify-content:center;">${ic(f.icon,13,'var(--'+f.color+')')}</div>
+        ${!f.seen?'<div style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:1.5px solid var(--surface2);"></div>':''}
+      </div>
+      <p style="font-size:11px;font-weight:600;margin:0;">${f.name}</p>
+      <p style="font-size:10px;color:var(--text-muted);margin:2px 0 0;">${f.event.length>20? f.event.slice(0,18)+'…':f.event}</p>
+      <p style="font-size:10px;color:${f.cheered?'var(--accent)':'var(--text-muted)'};margin:4px 0 0;">👍 ${f.cheers}</p>
+    </div>`).join('')}
+  </div>`;
+}
+function planTrailHTML(compact){
+  const coords=[[40,55],[110,20],[180,55],[250,90],[320,55],[390,20],[460,55],[530,90],[600,55]];
+  const path='M40 55 Q75 20 110 20 Q145 20 180 55 Q215 90 250 90 Q285 90 320 55 Q355 20 390 20 Q425 20 460 55 Q495 90 530 90 Q565 90 600 55';
+  function nodeStyle(p){
+    if(p.status==='done') return {bg:'var(--success)',border:'var(--success)',icon:ic('starfilled',16,'#fff')};
+    if(p.status==='today') return {bg:'var(--accent)',border:'var(--accent)',icon:ic('play',19,'#fff')};
+    if(p.type==='revise') return {bg:'var(--surface2)',border:'var(--border-strong)',icon:ic('refresh',15,'var(--warning)')};
+    if(p.type==='mock') return {bg:'var(--surface2)',border:'var(--border-strong)',icon:ic('check',15,'var(--pro)')};
+    if(p.type==='exam') return {bg:'var(--surface2)',border:'var(--border-strong)',icon:ic('flag',15,'var(--text-muted)')};
+    return {bg:'var(--surface2)',border:'var(--border-strong)',icon: p.subject==='Integers'? ic('fraction',15,'var(--text-sec)') : ic('decimal',15,'var(--text-sec)')};
+  }
+  const days = state.plan.slice(0,9);
+  return `
+  <div class="section-head"><p class="section-title" style="margin:0">Your exam prep plan</p><span class="see-all" onclick="nav('plan-full')">See all</span></div>
+  <div style="overflow-x:auto;margin-bottom:6px;">
+    <div style="position:relative;width:640px;height:128px;">
+      <svg viewBox="0 0 640 128" width="640" height="128" style="position:absolute;top:0;left:0;"><path d="${path}" fill="none" stroke="var(--border-strong)" stroke-width="4" stroke-linecap="round"/></svg>
+      ${days.map((p,i)=>{
+        const [x,y]=coords[i]; const s=nodeStyle(p);
+        const size = p.status==='today'?54:42;
+        const clickable = p.status==='today' ? `openTopic(${p.day})` : (p.status==='upcoming' && p.prereqOk!==undefined ? `openDayPreview(${p.day})` : `toast('${p.type==='revise'?'Revision opens on day '+p.day:(p.type==='mock'?'Mock test opens on day '+p.day:(p.type==='exam'?'Good luck!':'Already completed'))}')`);
+        return `
+        <div style="position:absolute;left:${x}px;top:${y}px;transform:translate(-50%,-50%);width:${size}px;height:${size}px;border-radius:50%;background:${s.bg};border:2px solid ${s.border};display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="${clickable}">${s.icon}</div>
+        <p style="position:absolute;left:${x}px;top:${y+size/2+8}px;transform:translateX(-50%);font-size:8px;color:${p.status==='today'?'var(--accent)':'var(--text-muted)'};font-weight:${p.status==='today'?'600':'400'};width:60px;text-align:center;">${p.status==='today'?'Today':'Day '+p.day}</p>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function revisionRailHTML(){
+  return `
+  <p class="section-title">Needs revision</p>
+  <div class="rail">
+    ${state.revisionQueue.map(r=>`
+    <div class="card" style="min-width:130px;background:var(--warning-bg);position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <span style="cursor:pointer;display:flex" onclick="openTopic(null,'${r.topic}','revision')">${ic('refresh',16,'var(--warning)')}</span>
+        <span style="cursor:pointer;display:flex" onclick="toggleBookmark('${r.topic}','revision')">${isBookmarked(r.topic,'revision') ? ic('bookmarkfilled',15,'var(--warning)') : ic('bookmark',15,'var(--warning)')}</span>
+      </div>
+      <p style="font-size:12px;font-weight:600;margin:8px 0 0;cursor:pointer" onclick="openTopic(null,'${r.topic}','revision')">${r.topic}</p>
+      <p style="font-size:11px;color:var(--warning);margin:2px 0 0;">${r.score}% last quiz</p>
+    </div>`).join('')}
+  </div>`;
+}
+function bookmarksRailHTML(){
+  if(state.bookmarks.length===0) return '';
+  const shown = state.bookmarks.slice(0,5);
+  return `
+  <div class="section-head"><p class="section-title" style="margin:0">Bookmarks</p><span class="see-all" onclick="nav('bookmarks')">See all (${state.bookmarks.length})</span></div>
+  <div class="rail" style="margin-bottom:18px;">
+    ${shown.map(b=>{ const m=bookmarkTypeMeta[b.type];
+    return `
+    <div class="card" style="min-width:140px;cursor:pointer" onclick="openTopic(null,'${b.key}','${b.type}')">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;border-radius:8px;background:var(--${m.color}-bg);display:flex;align-items:center;justify-content:center;">${ic(m.icon,14,'var(--'+m.color+')')}</div>
+        <span style="font-size:9px;color:var(--${m.color});font-weight:600;">${m.label}</span>
+      </div>
+      <p style="font-size:11px;font-weight:600;margin:0;line-height:1.3;">${b.key}</p>
+    </div>`;}).join('')}
+  </div>`;
+}
+function subjectsRailHTML(){
+  return `
+  <p class="section-title" style="margin-top:18px;">Math</p>
+  <div class="rail" style="margin-bottom:14px;">
+    <div style="min-width:110px;cursor:pointer" onclick="nav('path')"><div style="height:64px;background:var(--pro-bg);border-radius:12px;display:flex;align-items:center;justify-content:center;">${ic('fraction',22,'var(--pro)')}</div><p style="font-size:12px;margin:6px 0 0;">Integers</p></div>
+    <div style="min-width:110px;cursor:pointer" onclick="toast('Fractions & Decimals path coming next')"><div style="height:64px;background:var(--pro-bg);border-radius:12px;display:flex;align-items:center;justify-content:center;">${ic('decimal',22,'var(--pro)')}</div><p style="font-size:12px;margin:6px 0 0;">Fractions</p></div>
+  </div>`;
+}
+
+/* ---------------- SCREENS ---------------- */
+function screenHome(){
+  const p4 = state.plan.find(x=>x.day===4);
+  const heroCard = p4.status==='done' ? `
+    <div class="card" style="background:var(--success-bg);margin-bottom:18px;">
+      <p style="font-size:11px;color:var(--success);margin:0 0 6px;font-weight:600;">All done for today &middot; +${state.sessionSummary?state.sessionSummary.sessionXP:35} XP earned</p>
+      <p style="font-size:16px;font-weight:600;margin:0 0 4px;">Nice work on Integers!</p>
+      <p style="font-size:13px;color:var(--text-sec);margin:0 0 12px;">Come back tomorrow for Day 5, or get ahead now.</p>
+      <button class="btn-secondary" onclick="openDayPreview(5)">Start Day 5 early</button>
+    </div>` : `
+    <div class="card" style="background:var(--accent-bg);margin-bottom:18px;cursor:pointer" onclick="openTopic(4)">
+      <p style="font-size:11px;color:var(--accent);margin:0 0 6px;font-weight:600;">Today's focus &middot; 18 min</p>
+      <p style="font-size:16px;font-weight:600;margin:0 0 4px;">Multiplication &amp; division of integers</p>
+      <p style="font-size:13px;color:var(--text-sec);margin:0 0 12px;">Concept + simulation + quick quiz</p>
+      <button class="btn-primary" onclick="event.stopPropagation();openTopic(4)">Start now</button>
+    </div>`;
+  return `<div class="content-pad">
+    ${topBarChips()}
+    ${heroCard}
+    ${questTrailHTML()}
+    ${friendsRailHTML()}
+    ${bookmarksRailHTML()}
+    ${planTrailHTML()}
+    ${revisionRailHTML()}
+    ${subjectsRailHTML()}
+  </div>`;
+}
+
+function screenPlanFull(){
+  const icon = p => p.status==='done'?ic('starfilled',14,'var(--success)'): p.status==='today'?ic('play',14,'var(--accent)'): p.type==='revise'?ic('refresh',14,'var(--warning)'): p.type==='mock'?ic('check',14,'var(--pro)'): p.type==='exam'?ic('flag',14,'var(--text-muted)'):ic('book',14,'var(--text-muted)');
+  return `<div class="content-pad">
+    ${backHeader('Your prep plan')}
+    <p style="font-size:12px;color:var(--text-sec);margin:0 0 16px;padding-left:30px;">10 days &middot; Math &middot; Unit Test &middot; 28 July</p>
+    ${state.plan.map(p=>`
+    <div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--border);${p.status==='today'?'background:var(--accent-bg);border-radius:10px;padding:10px 8px;margin:2px -8px;':''}cursor:pointer" onclick="${p.status==='today'?`openTopic(${p.day})`: p.status==='upcoming'?`openDayPreview(${p.day})`:`toast('Already completed')`}">
+      <span style="font-size:12px;color:${p.status==='today'?'var(--accent)':'var(--text-muted)'};width:44px;font-weight:${p.status==='today'?'600':'400'};">Day ${p.day}</span>
+      ${icon(p)}
+      <p style="font-size:13px;margin:0;flex:1;font-weight:${p.status==='today'?'600':'400'};color:${p.status==='upcoming'?'var(--text-sec)':'var(--text)'};">${p.label}${p.status==='today'?' &middot; Today':''}</p>
+    </div>`).join('')}
+    <button class="btn-primary" style="width:100%;margin-top:18px;" onclick="openTopic(4)">Go to today</button>
+    <button class="btn-secondary" style="width:100%;margin-top:8px;" onclick="nav('plan-setup')">Create a new plan</button>
+  </div>`;
+}
+
+function screenPlanSetup(){
+  const ps=state.planSetup;
+  const need = Object.entries(ps.chapters).filter(([k,v])=>v).length * 230;
+  const cap = ps.days*ps.minutes;
+  return `<div class="content-pad">
+    ${backHeader('Plan an exam')}
+    <p style="font-size:12px;color:var(--text-sec);margin:0 0 18px;padding-left:30px;">We'll build a day-by-day prep plan from this</p>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 8px;">EXAM TYPE</p>
+    <div style="display:flex;gap:8px;margin-bottom:18px;">
+      ${['Unit Test','Mid-term','Final'].map(t=>`<span class="chip" style="cursor:pointer;background:${ps.examType===t?'var(--accent)':'transparent'};color:${ps.examType===t?'#fff':'var(--text-sec)'};border:${ps.examType===t?'none':'1px solid var(--border-strong)'}" onclick="ps_setType('${t}')">${t}</span>`).join('')}
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 8px;">CHAPTERS</p>
+    <div style="margin-bottom:18px;">
+      ${Object.entries(ps.chapters).map(([name,checked])=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--border);cursor:pointer" onclick="ps_toggleChapter('${name}')">
+        ${checked?ic('check',18,'var(--accent)'):'<div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border-strong);"></div>'}
+        <p style="font-size:14px;margin:0;color:${checked?'var(--text)':'var(--text-sec)'}">${name}</p>
+      </div>`).join('')}
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 8px;">DAYS UNTIL EXAM: ${ps.days}</p>
+    <input type="range" min="3" max="14" value="${ps.days}" oninput="ps_setDays(this.value)" style="width:100%;margin-bottom:18px;">
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 8px;">MINUTES/DAY: ${ps.minutes}</p>
+    <input type="range" min="15" max="90" step="5" value="${ps.minutes}" oninput="ps_setMinutes(this.value)" style="width:100%;margin-bottom:16px;">
+    <div class="card" style="background:${need>cap?'var(--danger-bg)':'var(--success-bg)'};margin-bottom:18px;">
+      <p style="font-size:12px;color:${need>cap?'var(--danger)':'var(--success)'};margin:0;">${need>cap? `Short by ${need-cap} min — some topics may be dropped or trimmed.` : `Fits comfortably in your daily study time, with room for revision.`}</p>
+    </div>
+    <button class="btn-primary" style="width:100%;" onclick="ps_generate()">Generate my plan</button>
+  </div>`;
+}
+function ps_setType(t){state.planSetup.examType=t; render();}
+function ps_toggleChapter(n){state.planSetup.chapters[n]=!state.planSetup.chapters[n]; render();}
+function ps_setDays(v){state.planSetup.days=+v; render();}
+function ps_setMinutes(v){state.planSetup.minutes=+v; render();}
+function ps_generate(){ state.planCreated=true; toast('Plan generated'); nav('plan-full'); }
+
+function screenTopic(){
+  const t = state.currentTopic;
+  const key = t.label;
+  if(!state.topicProgress[key]) state.topicProgress[key] = {concept:false, sim:false, quiz:false, counted:false};
+  const prog = state.topicProgress[key];
+  return `<div class="content-pad">
+    ${backHeader(t.label)}
+    <p style="font-size:11px;color:var(--text-muted);margin:0 0 16px;padding-left:30px;">${t.subject||''} &middot; ${t.contextLabel||''}</p>
+    <div class="card" style="background:var(--accent-bg);margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">${ic('sparkle',15,'var(--accent)')}<p style="font-size:12px;font-weight:600;color:var(--accent);margin:0;">Step 1 &middot; Concept</p></div>
+        <span style="cursor:pointer;display:flex" onclick="toggleBookmark('${key}','concept')">${isBookmarked(key,'concept') ? ic('bookmarkfilled',17,'var(--accent)') : ic('bookmark',17,'var(--accent)')}</span>
+      </div>
+      <p style="font-size:14px;margin:0 0 12px;">The tutor walks through the idea with examples before moving to symbols.</p>
+      <button class="btn-primary" onclick="nav('tutor')">${prog.concept?'Review again':'Continue with tutor'}</button>
+    </div>
+    <div class="card" style="margin-bottom:12px;opacity:${prog.concept?1:0.55};">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">${ic('gamepad',15,'var(--text-sec)')}<p style="font-size:12px;font-weight:600;color:var(--text-sec);margin:0;">Step 2 &middot; Simulation</p></div>
+        <span style="cursor:pointer;display:flex" onclick="toggleBookmark('${key}','simulation')">${isBookmarked(key,'simulation') ? ic('bookmarkfilled',17,'var(--pro)') : ic('bookmark',17,'var(--text-muted)')}</span>
+      </div>
+      <p style="font-size:14px;margin:0 0 4px;">Interactive practice for this concept</p>
+      ${prog.concept? `<button class="btn-secondary" onclick="doSim('${key}')">${prog.sim?'Replay simulation':'Start simulation'}</button>` : `<p style="font-size:12px;color:var(--text-muted);margin:0;">Unlocks after the concept step</p>`}
+    </div>
+    <div class="card" style="opacity:${prog.sim?1:0.55};">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">${ic('check',15,'var(--text-sec)')}<p style="font-size:12px;font-weight:600;color:var(--text-sec);margin:0;">Step 3 &middot; Quick quiz</p></div>
+      <p style="font-size:14px;margin:0 0 4px;">4 questions &middot; feeds your revision schedule</p>
+      ${prog.sim? `<button class="btn-secondary" onclick="startQuizFor('${key}')">Start quiz</button>` : `<p style="font-size:12px;color:var(--text-muted);margin:0;">Unlocks after the simulation</p>`}
+    </div>
+  </div>`;
+}
+function openTopic(day, label, source){
+  if(label){
+    const labels = {concept:'Concept review', simulation:'Simulation practice', revision:'Revision'};
+    state.currentTopic = {label, subject: labels[source]||'Practice', contextLabel: state.bookmarks.some(b=>b.key===label&&b.type===source)?'From your bookmarks':'Spaced repetition'};
+    nav('topic'); return;
+  }
+  const p = state.plan.find(x=>x.day===day);
+  state.currentTopic = {label:p.label, subject:p.subject||'', contextLabel:'Day '+day+' of your plan'};
+  nav('topic');
+}
+function doSim(key){ state.topicProgress[key].sim=true; state.xp+=10; toast('Simulation complete! +10 XP'); setTimeout(()=>startQuizFor(key), 500); }
+
+function screenTutor(){
+  const t = state.currentTopic;
+  return `<div class="content-pad" style="display:flex;flex-direction:column;height:100%;">
+    ${backHeader('Concept &middot; '+t.label)}
+    <div class="card" style="margin-bottom:14px;">
+      <svg viewBox="0 0 320 60" width="100%" height="60">
+        <line x1="10" y1="30" x2="310" y2="30" stroke="var(--border-strong)"/>
+        <circle cx="30" cy="30" r="3" fill="var(--danger)"/><text x="30" y="48" font-size="9" text-anchor="middle" fill="var(--text-muted)">-4</text>
+        <circle cx="160" cy="30" r="3" fill="var(--text-muted)"/><text x="160" y="48" font-size="9" text-anchor="middle" fill="var(--text-muted)">0</text>
+        <circle cx="290" cy="30" r="3" fill="var(--success)"/><text x="290" y="48" font-size="9" text-anchor="middle" fill="var(--text-muted)">4</text>
+      </svg>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);flex-shrink:0;display:flex;align-items:center;justify-content:center;">${ic('sparkle',16,'#fff')}</div>
+      <div class="card" style="background:var(--accent-bg);flex:1;">
+        <p style="font-size:14px;margin:0;line-height:1.5;">Same signs give a positive answer, different signs give a negative one.</p>
+      </div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-bottom:6px;">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="finishConcept()">${ic('mic',22,'#fff')}</div>
+      <button class="btn-secondary" onclick="finishConcept()">Got it, continue &rarr;</button>
+    </div>
+  </div>`;
+}
+function checkTopicFullyDone(key){
+  const p = state.topicProgress[key];
+  if(p.concept && p.sim && p.quiz && !p.counted){ p.counted = true; state.conceptsCompleted++; }
+}
+function finishConcept(){
+  const key = state.currentTopic.label;
+  if(!state.topicProgress[key]) state.topicProgress[key]={concept:false,sim:false,quiz:false,counted:false};
+  state.topicProgress[key].concept = true;
+  state.xp += 10;
+  toast('+10 XP');
+  back();
+}
+
+function screenQuiz(){
+  const key = state.quizPending || (state.currentTopic? state.currentTopic.label : 'Multiplication & division of integers');
+  return `<div class="content-pad">
+    ${backHeader('Quick quiz')}
+    <p style="font-size:13px;color:var(--text-sec);margin:0 0 18px;padding-left:30px;">${key}</p>
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-size:14px;margin:0 0 12px;">Drag the slider to simulate a quiz score, then submit.</p>
+      <input type="range" min="0" max="100" step="5" value="72" id="quizScoreInput" oninput="document.getElementById('qsLabel').textContent=this.value+'%'">
+      <p id="qsLabel" style="text-align:center;font-size:20px;font-weight:600;margin:8px 0 0;">72%</p>
+    </div>
+    <button class="btn-primary" style="width:100%;" onclick="submitQuiz('${key}')">Submit</button>
+  </div>`;
+}
+function startQuizFor(key){ state.quizPending = key; nav('quiz'); }
+function submitQuiz(key){
+  const score = +document.getElementById('quizScoreInput').value;
+  let sessionXP = 15; // this quiz step
+  state.xp += 15;
+  if(!state.topicProgress[key]) state.topicProgress[key] = {concept:true, sim:true, quiz:false, counted:false};
+  const wasAlreadyCounted = state.topicProgress[key].counted;
+  state.topicProgress[key].quiz = true;
+  checkTopicFullyDone(key);
+  // if concept/sim happened in this same session (both true and topic just now got counted), reflect full session XP for the summary
+  if(!wasAlreadyCounted && state.topicProgress[key].counted) sessionXP = 35;
+
+  let questCompleted = null;
+  if(score>=80 && state.quests.quiz.done<state.quests.quiz.total){
+    state.quests.quiz.done++;
+    if(state.quests.quiz.done>=state.quests.quiz.total && !state.quests.quiz.claimed){
+      questCompleted = {title:'Score 80%+ on a quiz', which:'quiz'};
+    }
+  }
+  const existing = state.revisionQueue.find(r=>r.topic===key);
+  let revisionOutcome;
+  if(score<85){
+    if(existing) existing.score=score; else state.revisionQueue.unshift({topic:key,score});
+    revisionOutcome = 'revision';
+  } else {
+    state.revisionQueue = state.revisionQueue.filter(r=>r.topic!==key);
+    revisionOutcome = 'mastered';
+  }
+  const planDay = state.plan.find(p=>p.label===key);
+  if(planDay) planDay.status='done';
+
+  state.sessionSummary = {key, score, sessionXP, questCompleted, revisionOutcome};
+  state.quizPending=null;
+  nav('session-complete');
+}
+
+function screenSessionComplete(){
+  const s = state.sessionSummary;
+  const confettiColors = ['var(--accent)','var(--success)','var(--warning)','var(--pro)','var(--danger)'];
+  const confetti = Array.from({length:12}).map((_,i)=>{
+    const left = 8 + (i*84/11);
+    const color = confettiColors[i%confettiColors.length];
+    const delay = (i%5)*0.07;
+    return `<div class="confetti-piece" style="left:${left}%;background:${color};animation-delay:${delay}s;"></div>`;
+  }).join('');
+  return `<div class="content-pad" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:8px;">
+    <div style="position:relative;width:100%;height:110px;overflow:hidden;margin-bottom:2px;">
+      ${confetti}
+      <div class="celebrate-icon" style="position:absolute;left:50%;top:16px;transform:translateX(-50%);width:64px;height:64px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;">${ic('starfilled',30,'#fff')}</div>
+    </div>
+    <p style="font-size:18px;font-weight:700;margin:6px 0 2px;">Topic complete!</p>
+    <p style="font-size:13px;color:var(--text-sec);margin:0 0 18px;">${s.key}</p>
+
+    <div class="card" style="width:100%;text-align:center;background:var(--pro-bg);margin-bottom:12px;">
+      ${ic('star',18,'var(--pro)')}
+      <p class="countup" data-target="${s.sessionXP}" style="font-size:22px;font-weight:700;color:var(--pro);margin:6px 0 0;">0</p>
+      <p style="font-size:10px;color:var(--pro);margin:2px 0 0;">XP earned</p>
+    </div>
+
+    ${s.questCompleted ? (() => {
+      const q = state.quests[s.questCompleted.which];
+      if(q.claimed){
+        return `<div class="card" style="width:100%;margin-bottom:14px;background:var(--success-bg);display:flex;align-items:center;gap:10px;">
+          ${ic('check',20,'var(--success)')}
+          <p style="font-size:12px;font-weight:600;margin:0;color:var(--success);">Quest claimed &middot; ${s.questCompleted.title}</p>
+        </div>`;
+      }
+      return `<div class="card" style="width:100%;margin-bottom:10px;background:var(--warning-bg);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          ${ic('award',20,'var(--warning)')}
+          <p style="font-size:12px;font-weight:600;margin:0;color:var(--warning);">Quest complete: ${s.questCompleted.title}</p>
+        </div>
+        <button class="btn-primary" style="width:100%;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="finalizeClaim('${s.questCompleted.which}',1)">${ic('video',14,'#fff')}<span>Watch ad &middot; claim +${q.reward} gems</span></button>
+        <button class="btn-secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="finalizeClaim('${s.questCompleted.which}',2)">${ic('video',14,'var(--text-sec)')}<span>Watch 2 ads &middot; claim +${q.reward*2} gems</span></button>
+      </div>`;
+    })() : ''}
+
+    ${s.adDoubled ? `
+    <div class="chip" style="background:var(--success-bg);color:var(--success);margin-bottom:14px;">${ic('check',13,'var(--success)')}<span>XP doubled &middot; +${s.bonusXP} bonus added</span></div>
+    <p style="font-size:10px;color:var(--text-muted);margin:-8px 0 14px;">Bonus XP counts toward your lifetime total, not this week's league ranking</p>
+    ` : `
+    <button class="btn-secondary" style="width:100%;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="doubleRewards()">${ic('video',15,'var(--text-sec)')}<span>Watch an ad to double XP</span></button>
+    <p style="font-size:10px;color:var(--text-muted);margin:0 0 14px;">Optional &middot; won't affect your league rank</p>
+    `}
+
+    <div class="card" style="width:100%;margin-bottom:12px;background:${s.revisionOutcome==='mastered'?'var(--success-bg)':'var(--warning-bg)'};">
+      <p style="font-size:12px;color:${s.revisionOutcome==='mastered'?'var(--success)':'var(--warning)'};margin:0;">
+        ${s.revisionOutcome==='mastered' ? `Scored ${s.score}% — mastered, no revision needed yet.` : `Scored ${s.score}% — added to your revision queue.`}
+      </p>
+    </div>
+
+    <div class="card" style="width:100%;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;align-items:center;gap:8px;">${ic('flame',16,'var(--warning)')}<span style="font-size:12px;color:var(--text-sec);">Streak</span></div>
+      <span style="font-size:13px;font-weight:600;">${state.streak} days &middot; kept</span>
+    </div>
+
+    <button class="btn-primary" style="width:100%;" onclick="tab('home')">Continue</button>
+  </div>`;
+}
+function doubleRewards(){
+  const s = state.sessionSummary;
+  if(!s || s.adDoubled) return;
+  toast('Playing a short ad…');
+  setTimeout(()=>{
+    const extraXP = s.sessionXP; // bonus XP — lifetime stat only, never counted toward weekly league XP
+    state.xp += extraXP;
+    s.bonusXP = extraXP;
+    s.sessionXP = s.sessionXP*2;
+    s.adDoubled = true;
+    toast('Doubled! Rewards updated.');
+    render();
+  }, 900);
+}
+function animateCountUp(){
+  document.querySelectorAll('.countup').forEach(el=>{
+    const target = +el.getAttribute('data-target');
+    const start = performance.now();
+    const dur = 650;
+    function step(now){
+      const t = Math.min(1,(now-start)/dur);
+      const eased = 1-Math.pow(1-t,3);
+      el.textContent = Math.round(target*eased);
+      if(t<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function doSimQuest(){
+  const q = state.quests.sims;
+  if(q.done<q.total){ q.done++; toast(q.done>=q.total? 'Simulations quest complete! Claim it in Quests.' : `Simulation ${q.done}/${q.total} done`); render(); }
+  else toast('Quest already complete — claim it from Quests');
+}
+function claimBonus(){
+  if(state.quests.bonus.claimed){ toast('Already claimed'); return; }
+  toast('Playing a short ad…');
+  setTimeout(()=>{ state.quests.bonus.claimed=true; state.gems+=state.quests.bonus.reward; toast('+30 gems added!'); render(); }, 900);
+}
+
+function screenQuests(){
+  const q=state.quests;
+  function questRow(title, done, total, reward, claimed, onClaim){
+    const complete = done>=total;
+    return `<div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><p style="font-size:13px;margin:0;">${title}</p><p style="font-size:12px;color:var(--text-muted);margin:0;">${done}/${total}</p></div>
+      <div class="progress" style="margin-bottom:8px;"><div style="width:${Math.min(100,100*done/total)}%"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;">${ic('diamond',13,'var(--pro)')}<span style="font-size:12px;color:var(--text-sec);">+${reward} gems</span></div>
+        ${complete && !claimed ? `<button class="btn-primary" style="padding:6px 12px;font-size:11px;" onclick="${onClaim}">Claim</button>` : claimed? `<span style="font-size:11px;color:var(--success);">Claimed</span>`:''}
+      </div>
+    </div>`;
+  }
+  return `<div class="content-pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <p style="font-size:16px;font-weight:600;margin:0;">Quests</p>
+      <div class="chip" style="background:var(--pro-bg);color:var(--pro);">${ic('diamond',15,'var(--pro)')}<span>${state.gems}</span></div>
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 8px;">TODAY</p>
+    ${questRow('Complete 3 simulations', q.sims.done, q.sims.total, q.sims.reward, q.sims.claimed, "openClaimModal('sims')")}
+    ${questRow('Score 80%+ on a quiz', q.quiz.done, q.quiz.total, q.quiz.reward, q.quiz.claimed, "openClaimModal('quiz')")}
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:16px 0 8px;">BONUS</p>
+    <div class="card" style="background:var(--warning-bg);display:flex;gap:12px;align-items:center;cursor:pointer" onclick="claimBonus()">
+      ${ic('video',22,'var(--warning)')}
+      <div style="flex:1;"><p style="font-size:13px;font-weight:600;margin:0 0 2px;">${q.bonus.claimed?'Bonus claimed':'Unlock a bonus quest'}</p><p style="font-size:11px;color:var(--warning);margin:0;">${q.bonus.claimed?'+30 gems added':'Watch a short video · +30 gems, fixed'}</p></div>
+    </div>
+  </div>`;
+}
+function openClaimModal(which){
+  const q = state.quests[which];
+  if(q.done<q.total){ toast('Not complete yet'); return; }
+  if(q.claimed){ toast('Already claimed'); return; }
+  state.claimingQuest = which;
+  openModal('claimReward');
+}
+function finalizeClaim(which, ads){
+  const q = state.quests[which];
+  const amount = ads===2 ? q.reward*2 : q.reward;
+  if(ads===2){
+    toast('Playing ad 1 of 2…');
+    setTimeout(()=>{
+      toast('Playing ad 2 of 2…');
+      setTimeout(()=>{ q.claimed=true; state.gems+=amount; closeModal(); toast(`+${amount} gems claimed!`); render(); }, 900);
+    }, 900);
+  } else {
+    toast('Playing a short ad…');
+    setTimeout(()=>{ q.claimed=true; state.gems+=amount; closeModal(); toast(`+${amount} gems claimed!`); render(); }, 900);
+  }
+}
+function overlayClaimReward(){
+  const which = state.claimingQuest;
+  const q = state.quests[which];
+  const titles = {sims:'Complete 3 simulations', quiz:'Score 80%+ on a quiz'};
+  return `<div class="overlay">
+    <div class="sheet" style="text-align:center;">
+      <div style="width:36px;height:4px;background:var(--border-strong);border-radius:2px;margin:0 auto 16px;"></div>
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">${ic('check',24,'#fff')}</div>
+      <p style="font-size:15px;font-weight:600;margin:0 0 2px;">Quest complete!</p>
+      <p style="font-size:12px;color:var(--text-sec);margin:0 0 18px;">${titles[which]}</p>
+      <button class="btn-primary" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="finalizeClaim('${which}',1)">${ic('video',15,'#fff')}<span>Watch ad &middot; claim +${q.reward} gems</span></button>
+      <button class="btn-secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="finalizeClaim('${which}',2)">${ic('video',15,'var(--text-sec)')}<span>Watch 2 ads &middot; claim +${q.reward*2} gems</span></button>
+      <p style="font-size:10px;color:var(--text-muted);margin:10px 0 0;">Gems only unlock by watching \u2014 no free claim</p>
+    </div>
+  </div>`;
+}
+
+function screenRewards(){
+  const eligible = state.streak>=50;
+  return `<div class="content-pad">
+    ${backHeader('Rewards store')}
+    <div style="display:flex;justify-content:flex-end;margin-top:-28px;margin-bottom:14px;">
+      <div class="chip" style="background:var(--pro-bg);color:var(--pro);">${ic('diamond',13,'var(--pro)')}<span>${state.gems}</span></div>
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 10px;">MERCH &middot; requires 50 day streak</p>
+    <div class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:8px;opacity:${eligible?1:0.6}">
+      <div style="width:50px;height:50px;background:var(--accent-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${eligible?ic('gift',22,'var(--accent)'):ic('lock',20,'var(--text-muted)')}</div>
+      <div style="flex:1;"><p style="font-size:13px;font-weight:600;margin:0 0 2px;">EduAI Explorer Tee</p><p style="font-size:11px;color:var(--text-muted);margin:0;">300 gems &middot; ships in 7–10 days</p></div>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><p style="font-size:11px;color:var(--text-muted);margin:0;">Streak progress</p><p style="font-size:11px;color:var(--text-muted);margin:0;">${state.streak} / 50 days</p></div>
+      <div class="progress"><div style="width:${Math.min(100,100*state.streak/50)}%"></div></div>
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:0 0 10px;">STREAK PROTECTION</p>
+    <div class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div style="width:50px;height:50px;background:var(--warning-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${ic('refresh',20,'var(--warning)')}</div>
+      <div style="flex:1;"><p style="font-size:13px;font-weight:600;margin:0 0 2px;">Repair a broken streak</p><p style="font-size:11px;color:var(--text-muted);margin:0;">${3-state.repairsUsed} of 3 uses left this year</p></div>
+      <p style="font-size:13px;font-weight:600;color:var(--pro);margin:0;">${[150,250,400][state.repairsUsed]||400}</p>
+    </div>
+    <div class="card" style="background:var(--warning-bg);margin-bottom:20px;"><p style="font-size:11px;color:var(--warning);margin:0;">Cost rises each use: 150 &rarr; 250 &rarr; 400 gems. Max 3 repairs a year.</p></div>
+    <button class="btn-primary" style="width:100%;" ${eligible?'':'disabled style="width:100%;opacity:0.5"'} onclick="${eligible?"nav('parent-approval')":"toast('Reach a 50 day streak to redeem merch')"}">${eligible?'Redeem Explorer Tee':'Reach 50 day streak to redeem merch'}</button>
+    <p style="font-size:11px;color:var(--text-muted);text-align:center;margin:8px 0 0;">Merch orders need parent approval to ship</p>
+  </div>`;
+}
+
+function screenParentApproval(){
+  if(state.redeemStatus==='approved'){
+    return `<div class="content-pad" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:60px;">
+      ${ic('check',40,'var(--success)')}
+      <p style="font-size:15px;font-weight:600;margin:16px 0 6px;">Approved! Your tee is on its way</p>
+      <p style="font-size:12px;color:var(--text-sec);margin:0 0 20px;">300 gems have been spent.</p>
+      <button class="btn-primary" onclick="tab('home')">Back to home</button>
+    </div>`;
+  }
+  return `<div class="content-pad" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:50px;">
+    ${ic('user',36,'var(--accent)')}
+    <p style="font-size:15px;font-weight:600;margin:16px 0 6px;">Sent to your parent</p>
+    <p style="font-size:12px;color:var(--text-sec);margin:0 0 16px;line-height:1.5;">We've asked Mom/Dad to confirm the size and delivery address for your Explorer Tee.</p>
+    <div class="chip" style="background:var(--warning-bg);color:var(--warning);margin-bottom:24px;">Awaiting approval</div>
+    <button class="btn-secondary" onclick="simulateParentApprove()">Simulate parent approval (demo)</button>
+  </div>`;
+}
+function simulateParentApprove(){ state.redeemStatus='approved'; state.gems-=300; render(); }
+
+function screenStreak(){
+  const days=[['Mon',true],['Tue',true],['Wed',true],['Thu','freeze'],['Fri',true],['Sat',true],['Sun',false]];
+  return `<div class="content-pad">
+    ${backHeader('Your streak')}
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px;">
+      ${ic('flame',44,'var(--warning)')}
+      <p style="font-size:28px;font-weight:700;margin:6px 0 0;">${state.streak} days</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0;">Next milestone at 7 days</p>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      ${days.map(([d,v])=>`<div style="text-align:center;"><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">${d}</p>${v==='freeze'?ic('refresh',18,'var(--accent)'):ic('flame',18,v?'var(--warning)':'var(--border-strong)')}</div>`).join('')}
+    </div>
+    <p style="font-size:11px;color:var(--text-sec);text-align:center;margin:0 0 20px;">Thursday auto-covered by a streak freeze</p>
+    <div style="display:flex;gap:10px;margin-bottom:20px;">
+      <div class="card" style="flex:1;text-align:center;">${ic('sparkle',20,'var(--accent)')}<p style="font-size:18px;font-weight:600;margin:6px 0 0;">${state.conceptsCompleted}</p><p style="font-size:11px;color:var(--text-muted);margin:2px 0 0;">Concepts completed</p></div>
+      <div class="card" style="flex:1;text-align:center;">${ic('star',20,'var(--pro)')}<p style="font-size:18px;font-weight:600;margin:6px 0 0;">${state.xp}</p><p style="font-size:11px;color:var(--text-muted);margin:2px 0 0;">XP earned</p></div>
+    </div>
+    <button class="btn-secondary" style="width:100%;" disabled>Share unlocks at day 7</button>
+  </div>`;
+}
+
+function screenLeagues(){
+  const rows=[['Kavya',420,'success'],['Rehan',380,''],['Meher',355,''],['You',310,'accent'],['Ishaan',280,''],['Diya',240,''],['Vihaan',150,'danger']];
+  return `<div class="content-pad">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">${ic('shield',20,'var(--pro)')}<p style="font-size:16px;font-weight:600;margin:0;">${state.leagueName} League</p></div>
+    <p style="font-size:11px;color:var(--text-muted);margin:0 0 14px;">Ranked by XP earned this week, not quiz scores</p>
+    <div class="subtab">
+      <span class="${state.leagueTab==='board'?'active':''}" onclick="state.leagueTab='board';render()">Leaderboard</span>
+      <span class="${state.leagueTab==='feed'?'active':''}" onclick="state.leagueTab='feed';render()">Feed</span>
+    </div>
+    ${state.leagueTab==='board' ? `
+    ${rows.map((r,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 8px;${r[2]==='accent'?'background:var(--accent-bg);border-radius:10px;margin:0 -8px;':''}">
+      <span style="font-size:13px;color:${r[2]?'var(--'+r[2]+')':'var(--text-muted)'};width:20px;font-weight:${r[2]?'600':'400'};">${i+1}</span>
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--border);"></div>
+      <p style="font-size:13px;margin:0;flex:1;font-weight:${r[2]==='accent'?'600':'400'};">${r[0]}</p>
+      <p style="font-size:12px;color:${r[2]?'var(--'+r[2]+')':'var(--text-sec)'};margin:0;">${r[1]} XP</p>
+    </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;margin-top:14px;">
+      <span style="font-size:11px;color:var(--success);">Top 3 promote to Gold</span><span style="font-size:11px;color:var(--danger);">Bottom 3 drop to Bronze</span>
+    </div>` : `
+    ${state.friends.map((f,i)=>`
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--${f.color}-bg);display:flex;align-items:center;justify-content:center;">${ic(f.icon,14,'var(--'+f.color+')')}</div>
+        <p style="font-size:13px;font-weight:600;margin:0;">${f.name}</p>
+      </div>
+      <p style="font-size:14px;margin:0 0 10px;">${f.event}</p>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--surface1);width:fit-content;padding:6px 12px;border-radius:999px;cursor:pointer" onclick="cheer(${i})">👍 <span style="font-size:12px;color:var(--text-sec);">${f.cheers}</span></div>
+    </div>`).join('')}`}
+  </div>`;
+}
+function cheer(i){ const f=state.friends[i]; if(!f.cheered){f.cheers++; f.cheered=true;} f.seen=true; render(); }
+
+function screenProfile(){
+  return `<div class="content-pad">
+    <div class="header-row">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--accent);"></div>
+      <div style="flex:1;"><p style="font-size:16px;font-weight:600;margin:0;">Aanya</p><div style="display:flex;align-items:center;gap:6px;margin-top:2px;">${ic('shield',13,'var(--pro)')}<span style="font-size:11px;color:var(--text-muted);">${state.leagueName} League &middot; Rank ${state.leagueRank}</span></div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <div class="card" style="flex:1;text-align:center;">${ic('flame',16,'var(--warning)')}<p style="font-size:15px;font-weight:600;margin:4px 0 0;">${state.streak}</p><p style="font-size:10px;color:var(--text-muted);margin:1px 0 0;">Streak</p></div>
+      <div class="card" style="flex:1;text-align:center;">${ic('diamond',16,'var(--pro)')}<p style="font-size:15px;font-weight:600;margin:4px 0 0;">${state.gems}</p><p style="font-size:10px;color:var(--text-muted);margin:1px 0 0;">Gems</p></div>
+      <div class="card" style="flex:1;text-align:center;">${ic('award',16,'var(--success)')}<p style="font-size:15px;font-weight:600;margin:4px 0 0;">3</p><p style="font-size:10px;color:var(--text-muted);margin:1px 0 0;">Badges</p></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <p style="font-size:13px;font-weight:600;margin:0;">Friends &middot; 8</p>
+      <div style="display:flex;align-items:center;gap:4px;color:var(--accent);cursor:pointer" onclick="toast('Enter a friend code or scan a QR to add')">${ic('plus',14,'var(--accent)')}<span style="font-size:12px;font-weight:600;">Add</span></div>
+    </div>
+    <div class="rail" style="margin-bottom:18px;">
+      ${['accent','success','warning','pro'].map(c=>`<div style="width:32px;height:32px;border-radius:50%;background:var(--${c}-bg);flex-shrink:0;"></div>`).join('')}
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--surface1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:11px;color:var(--text-muted);">+4</span></div>
+    </div>
+    <div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="nav('bookmarks')">
+      ${ic('bookmarkfilled',20,'var(--pro)')}
+      <div style="flex:1;"><p style="font-size:13px;font-weight:600;margin:0 0 2px;">Bookmarked simulations</p><p style="font-size:11px;color:var(--text-muted);margin:0;">${state.bookmarks.length} saved</p></div>
+      ${ic('chevright',16,'var(--text-muted)')}
+    </div>
+    <div class="card" style="background:var(--accent-bg);margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="nav('invite')">
+      ${ic('gift',20,'var(--accent)')}
+      <div style="flex:1;"><p style="font-size:13px;font-weight:600;margin:0 0 2px;">Invite a friend</p><p style="font-size:11px;color:var(--text-sec);margin:0;">Share your code: AANYA7X2</p></div>
+      ${ic('chevright',16,'var(--accent)')}
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer" onclick="toast('Opened your device share sheet')">
+      ${ic('sparkle',20,'var(--text-sec)')}
+      <div style="flex:1;"><p style="font-size:13px;font-weight:600;margin:0 0 2px;">Share an achievement</p><p style="font-size:11px;color:var(--text-muted);margin:0;">Posts outside the app, only when you tap</p></div>
+      ${ic('chevright',16,'var(--text-muted)')}
+    </div>
+  </div>`;
+}
+
+function screenInvite(){
+  return `<div class="content-pad">
+    ${backHeader('Invite a friend')}
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:20px;">
+      ${ic('gift',34,'var(--accent)')}
+      <p style="font-size:14px;margin:12px 0 0;line-height:1.5;">You both get <b style="color:var(--pro)">50 gems</b> when they join and finish their first concept</p>
+    </div>
+    <div class="card" style="text-align:center;margin-bottom:14px;">
+      <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">YOUR CODE</p>
+      <p style="font-size:22px;font-weight:700;letter-spacing:2px;margin:0 0 12px;">AANYA7X2</p>
+      <div style="width:110px;height:110px;background:var(--surface1);border-radius:10px;margin:0 auto;display:flex;align-items:center;justify-content:center;">${ic('qr',56,'var(--text-sec)')}</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="flex:1;" onclick="toast('Code copied')">Copy code</button>
+      <button class="btn-secondary" style="flex:1;" onclick="toast('Opened your device share sheet')">Share link</button>
+    </div>
+  </div>`;
+}
+
+function screenPath(){
+  const nodes=[
+    {x:170,y:40,label:'Properties of integers',state:'done'},
+    {x:230,y:120,label:'Adding integers',state:'done'},
+    {x:110,y:280,label:'Bonus chest',state:'chest'},
+    {x:170,y:360,label:'Multiplication & division',state:'current'},
+    {x:230,y:520,label:'Word problems',state:'locked'}
+  ];
+  return `<div class="content-pad">
+    ${backHeader('Integers')}
+    <div class="card" style="background:var(--accent-bg);margin-bottom:8px;">
+      <p style="font-size:11px;color:var(--accent);margin:0 0 2px;letter-spacing:0.5px;">CHAPTER 1 &middot; MATH</p>
+    </div>
+    <div style="position:relative;height:580px;">
+      <svg viewBox="0 0 340 580" width="100%" height="580" style="position:absolute;top:0;left:0;">
+        <path d="M170 40 Q230 90 230 120 Q230 150 170 200 Q110 250 110 280 Q110 310 170 360" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M170 360 Q230 410 230 440 Q230 470 170 520" fill="none" stroke="var(--border-strong)" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 12"/>
+      </svg>
+      ${nodes.map(n=>{
+        let bg,border,icon,size=56,click;
+        if(n.state==='done'){bg='var(--success)';border='var(--success)';icon=ic('starfilled',22,'#fff');click=`toast('Already completed')`;}
+        else if(n.state==='current'){bg='var(--accent)';border='var(--accent)';icon=ic('play',24,'#fff');size=68;click=`openTopic(4)`;}
+        else if(n.state==='locked'){bg='var(--surface2)';border='var(--border-strong)';icon=ic('lock',18,'var(--text-muted)');click=`toast('Finish the current concept first')`;}
+        else {bg='var(--warning-bg)';border='var(--warning-bg)';icon=ic('gift',22,'var(--warning)');size=50;click=`claimChest()`;}
+        return `<div style="position:absolute;left:${n.x}px;top:${n.y}px;transform:translate(-50%,-50%);width:${size}px;height:${size}px;border-radius:${n.state==='chest'?'12px':'50%'};background:${bg};border:2px solid ${border};display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="${click}">${icon}</div>
+        <p style="position:absolute;left:${n.x}px;top:${n.y+size/2+10}px;transform:translateX(-50%);font-size:10px;color:var(--text-muted);width:100px;text-align:center;">${n.label}</p>
+        ${n.state==='current'?`<div style="position:absolute;left:${n.x}px;top:${n.y+size/2+30}px;transform:translateX(-50%);background:var(--surface2);border-radius:8px;padding:4px 10px;"><p style="font-size:10px;font-weight:600;color:var(--accent);margin:0;">START</p></div>`:''}
+        `;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function claimChest(){ state.gems+=25; toast('Chest opened! +25 gems'); render(); }
+
+/* ---------------- DAY PREVIEW MODAL ---------------- */
+function openDayPreview(day){ state.previewDay = day; openModal('dayPreview'); }
+function overlayDayPreview(){
+  const p = state.plan.find(x=>x.day===state.previewDay);
+  return `<div class="overlay">
+    <div class="sheet">
+      <div style="width:36px;height:4px;background:var(--border-strong);border-radius:2px;margin:0 auto 14px;"></div>
+      <p style="font-size:11px;color:var(--text-muted);margin:0 0 2px;">Day ${p.day} &middot; not scheduled yet</p>
+      <p style="font-size:15px;font-weight:600;margin:0 0 4px;">${p.label}</p>
+      <p style="font-size:12px;color:var(--text-sec);margin:0 0 14px;">~${p.minutes} min &middot; ${p.subject}</p>
+      <div class="card" style="background:var(--success-bg);margin-bottom:14px;"><p style="font-size:11px;color:var(--success);margin:0;">No prerequisites pending — safe to start early</p></div>
+      <button class="btn-primary" style="width:100%;margin-bottom:8px;" onclick="startEarly(${p.day})">Start early</button>
+      <button class="btn-ghost" style="width:100%;" onclick="closeModal()">Not now, I'll wait for Day ${p.day}</button>
+    </div>
+  </div>`;
+}
+function startEarly(day){
+  const p = state.plan.find(x=>x.day===day);
+  p.status='done';
+  closeModal();
+  toast(`Great! Day ${day} completed early.`);
+}
+
+/* ---------------- RENDER / ROUTER ---------------- */
+function screenBookmarks(){
+  return `<div class="content-pad">
+    ${backHeader('Bookmarks')}
+    <p style="font-size:12px;color:var(--text-sec);margin:0 0 16px;padding-left:30px;">${state.bookmarks.length} saved &middot; personal, not tied to your revision queue</p>
+    ${state.bookmarks.length===0? `<p style="font-size:13px;color:var(--text-muted);text-align:center;margin-top:40px;">No bookmarks yet. Tap the bookmark icon on a concept, simulation, or revision card to save it here.</p>` :
+    state.bookmarks.map(b=>{ const m=bookmarkTypeMeta[b.type]; return `
+    <div class="card" style="margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:var(--${m.color}-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" onclick="openTopic(null,'${b.key}','${b.type}')">${ic(m.icon,18,'var(--'+m.color+')')}</div>
+      <div style="flex:1;cursor:pointer" onclick="openTopic(null,'${b.key}','${b.type}')">
+        <p style="font-size:9px;color:var(--${m.color});font-weight:600;margin:0 0 2px;">${m.label.toUpperCase()}</p>
+        <p style="font-size:13px;margin:0;">${b.key}</p>
+      </div>
+      <span style="cursor:pointer;display:flex" onclick="toggleBookmark('${b.key}','${b.type}')">${ic('bookmarkfilled',18,'var(--'+m.color+')')}</span>
+    </div>`;}).join('')}
+  </div>`;
+}
+
+const SCREENS = {
+  home:screenHome, 'plan-full':screenPlanFull, 'plan-setup':screenPlanSetup, topic:screenTopic, tutor:screenTutor, quiz:screenQuiz,
+  quests:screenQuests, rewards:screenRewards, 'parent-approval':screenParentApproval, streak:screenStreak,
+  leagues:screenLeagues, profile:screenProfile, invite:screenInvite, path:screenPath, 'session-complete':screenSessionComplete, bookmarks:screenBookmarks
+};
+function currentTabScreen(){
+  if(['home'].includes(state.screen)) return 'home';
+  if(['plan-full','plan-setup'].includes(state.screen)) return 'plan';
+  if(['quests'].includes(state.screen)) return 'quests';
+  if(['leagues'].includes(state.screen)) return 'leagues';
+  if(['profile'].includes(state.screen)) return 'profile';
+  return null;
+}
+function goPlanTab(){ tab(state.planCreated?'plan-full':'plan-setup'); }
+function render(){
+  const target = state.screen==='plan' ? (state.planCreated?'plan-full':'plan-setup') : state.screen;
+  document.getElementById('content').innerHTML = (SCREENS[target]||screenHome)();
+  const active = currentTabScreen();
+  document.getElementById('bottomnav').innerHTML = `
+  <div class="bottomnav">
+    <div class="navitem" onclick="tab('home')">${ic('home',19, active==='home'?'var(--accent)':'var(--text-muted)')}</div>
+    <div class="navitem" onclick="goPlanTab()">${ic('clipboard',19, active==='plan'?'var(--accent)':'var(--text-muted)')}</div>
+    <div class="navitem" onclick="tab('quests')">${ic('target',19, active==='quests'?'var(--accent)':'var(--text-muted)')}<div class="navdot"></div></div>
+    <div class="navitem" onclick="tab('leagues')">${ic('shield',19, active==='leagues'?'var(--accent)':'var(--text-muted)')}<div class="navdot"></div></div>
+    <div class="navitem" onclick="tab('profile')">${ic('user',19, active==='profile'?'var(--accent)':'var(--text-muted)')}<div class="navdot"></div></div>
+  </div>`;
+  document.getElementById('overlay-root').innerHTML = state.modal==='dayPreview' ? overlayDayPreview() : (state.modal==='claimReward' ? overlayClaimReward() : '');
+  if(target==='session-complete') requestAnimationFrame(animateCountUp);
+}
+state.notifFriend = true;
+render();
+</script>
+</body>
+</html>
