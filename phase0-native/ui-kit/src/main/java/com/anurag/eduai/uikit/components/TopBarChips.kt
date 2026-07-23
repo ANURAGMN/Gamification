@@ -25,6 +25,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.anurag.eduai.uikit.avatar.SavedTutorAvatar
+import com.anurag.eduai.uikit.avatar.core.AvatarState
 import com.anurag.eduai.uikit.theme.EduChipRole
 import com.anurag.eduai.uikit.theme.EduAiTheme
 
@@ -64,7 +66,12 @@ fun TopBarChips(
                                 .size(34.dp)
                                 .clip(CircleShape)
                                 .background(colors.accent),
-                    )
+                    ) {
+                        SavedTutorAvatar(
+                            state = AvatarState.Happy,
+                            modifier = Modifier.matchParentSize(),
+                        )
+                    }
                     if (showFriendDot) {
                         NotificationDot(
                             modifier = Modifier.align(Alignment.TopEnd),

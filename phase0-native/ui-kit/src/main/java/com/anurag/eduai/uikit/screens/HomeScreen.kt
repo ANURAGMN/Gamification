@@ -18,6 +18,7 @@ import com.anurag.eduai.uikit.components.FriendUpdate
 import com.anurag.eduai.uikit.components.FriendsUpdatesRail
 import com.anurag.eduai.uikit.components.HeroDoneCard
 import com.anurag.eduai.uikit.components.HeroFocusCard
+import com.anurag.eduai.uikit.components.HomeTutorBubble
 import com.anurag.eduai.uikit.components.PlanDayNode
 import com.anurag.eduai.uikit.components.PlanDayStatus
 import com.anurag.eduai.uikit.components.PlanDayType
@@ -144,6 +145,10 @@ fun EduHomeScreen(
         }
 
         Spacer(modifier = Modifier.height(18.dp))
+
+        Entrance(delayMillis = 130) {
+            HomeTutorBubble()
+        }
 
         Entrance(delayMillis = 160) {
             QuestTrail(

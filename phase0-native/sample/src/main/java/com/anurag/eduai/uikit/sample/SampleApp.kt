@@ -29,6 +29,7 @@ import com.anurag.eduai.uikit.navigation.EduBottomNavItem
 import com.anurag.eduai.uikit.navigation.EduMainScaffold
 import com.anurag.eduai.uikit.screens.EduHomeScreen
 import com.anurag.eduai.uikit.screens.EduLeaguesScreen
+import com.anurag.eduai.uikit.screens.EduAvatarStudioScreen
 import com.anurag.eduai.uikit.screens.EduOnboardingScreen
 import com.anurag.eduai.uikit.screens.HomeUiState
 import com.anurag.eduai.uikit.screens.LeagueUiState
@@ -108,6 +109,8 @@ fun SampleApp() {
                         state = LeagueUiState(),
                         onParticipantClick = {},
                     )
+                EduBottomNavItem.Avatar.route ->
+                    EduAvatarStudioScreen()
                 EduBottomNavItem.Profile.route ->
                     ProfilePlaceholder(
                         isDark = themeMode == EduThemeMode.Dark,

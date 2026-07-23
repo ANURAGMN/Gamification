@@ -41,6 +41,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anurag.eduai.uikit.R
+import com.anurag.eduai.uikit.avatar.SavedTutorAvatar
+import com.anurag.eduai.uikit.avatar.core.AvatarState
 import com.anurag.eduai.uikit.theme.EduAiTheme
 
 /**
@@ -112,6 +114,12 @@ fun RewardOverlay(
                             .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    // Your saved tutor celebrates with you.
+                    SavedTutorAvatar(
+                        state = AvatarState.Celebrating,
+                        modifier = Modifier.size(84.dp),
+                    )
+
                     // Success animation (Lottie) — falls back to a bouncy check icon.
                     val checkPulse = rememberPulseScale(min = 0.94f, max = 1.06f, durationMillis = 900)
                     EduLottie(

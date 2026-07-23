@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.anurag.eduai.uikit.avatar.SavedTutorAvatar
+import com.anurag.eduai.uikit.avatar.core.AvatarState
 import com.anurag.eduai.uikit.theme.EduAiDimens
 import com.anurag.eduai.uikit.theme.EduAiTheme
 import com.anurag.eduai.uikit.theme.EduChipRole
@@ -59,6 +62,58 @@ data class SubjectTile(
     val name: String,
     val role: EduChipRole = EduChipRole.Pro,
 )
+
+/**
+ * Compact tutor greeting for the Home feed — a minimized Free avatar in a bubble
+ * with a short line of encouragement. Keeps the tutor present without taking a
+ * full screen.
+ */
+@Composable
+fun HomeTutorBubble(
+    message: String = "Ready for today's quests? Let's go!",
+    modifier: Modifier = Modifier,
+) {
+    val colors = EduAiTheme.colors
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+                .clip(RoundedCornerShape(EduAiDimens.cardRadius))
+                .background(colors.surface2)
+                .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(colors.accentBg),
+        ) {
+            SavedTutorAvatar(
+                state = AvatarState.Happy,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = "Your tutor",
+                color = colors.textMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = message,
+                color = colors.text,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 17.sp,
+            )
+        }
+    }
+}
 
 @Composable
 fun FriendsUpdatesRail(
